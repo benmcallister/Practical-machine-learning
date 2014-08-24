@@ -1,0 +1,124 @@
+# Course Project: Practical Machine Learning
+
+### Human Activity Recognition
+
+---
+
+#### Background On the Assignment *(from the course materials)*
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website [here](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises). 
+
+#### More on the Data Source
+
+[Velloso, E.](http://groupware.les.inf.puc-rio.br/collaborator.jsf?p1=evelloso); Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. [Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201). Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+
+#### Synopsis
+
+The goal was to predict the manner in which the exercise was performed. Three models were attempted. I first attempted a basic decision tree using the `rpart` method. This model had a high out-of-sample error, achieving accuracy of only 0.581 on my validation data set. I then tried a random forest model, which had accuracy of .9931. The random forest model, however, took a very long time to run, so I  tried a random forest model with PCA preprocessing, using ten principal components. This model's out-of-sample error was estimated to be .9586, so I decided to use the second model (random forest without PCA preprocessing) for my final submission.
+
+#### Analysis
+
+I downloaded and read the data into memory with the following code.
+
+```{r Get-the-data, cache=TRUE}
+## create a directory for the data
+if (!file.exists("data")) {
+        dir.create("data")
+}
+## download and read the data
+fileUrlTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+fileUrlTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(fileUrlTrain, destfile = "./data/train.csv", method = "curl")
+download.file(fileUrlTest, destfile = "./data/test.csv", method = "curl")
+training <- read.csv("./data/train.csv")
+testing <- read.csv("./data/test.csv")
+```
+
+I used the caret package for building my models.
+
+```{r Libraries, results='hide'}
+library(caret); library(rpart); library(randomForest);
+```
+
+##### Feature Selection
+
+I separated the training data provided into training (`myTraining`) and validation (`myTesting`) sets. After separating the data, I decided to eliminate all columns from the training set with any missing values. I also eliminated the first eight columns, which contained descriptive data (e.g., subject name, row number, time stamps), as opposed to sensor readings. I chose to train my model with only sensor data.
+
+``` {r Preprocessing, cache=TRUE}
+# separate into training and validation sets
+set.seed(6547)
+inTrain <- createDataPartition(y = training$classe, p = .75, list = FALSE)
+myTraining <- training[inTrain,]
+myTesting <- training[-inTrain,]
+
+# eliminate features with zeroes and NA values
+naCols <- sapply(myTraining, function(x) {!any(is.na(x))})
+myTraining2 <- myTraining[, naCols]
+zeroCols <- sapply(myTraining2, function(x) {!any(x=="")})
+myTraining2 <- myTraining2[, zeroCols]
+myTraining3 <- myTraining2[, -(1:8)]
+```
+
+##### Decision Tree
+
+The first model I trained was a basic decision tree using the `rpart` method. Note that I performed the exact same column elimination on the validation data as the training data.
+
+```{r First Model, cache=TRUE}
+# try to train with rpart decision tree
+modFit <- train(classe ~ ., method="rpart", data=myTraining3)
+# select only the relevant columns from cross-validation data set
+myTesting2 <- myTesting[, naCols]
+myTesting2 <- myTesting2[, zeroCols]
+myTesting3 <- myTesting2[, -(1:8)]
+# predict activity based on decision tree
+predictions.1 <- predict(modFit, newdata=myTesting3)
+# calculate confusion matrix to estimate out-of-sample error
+CV.1 <- confusionMatrix(predictions.1, myTesting3$classe)
+```
+```{r CV1}
+CV.1
+```
+
+Due to the realtively high out-of-sample error for the decision tree, I decided to try a random forest model. 
+
+```{r random-forest, cache=TRUE}
+# try to train with random forest NOTE- this took like an hour
+modFit <- train(classe ~ ., method="rf", data=myTraining3)
+predictions.2 <- predict(modFit, newdata=myTesting3)
+CV.2 <- confusionMatrix(predictions.2, myTesting3$classe)
+```
+```{r CV2}
+CV.2
+```
+
+This model was very accurate, but took a very long time to run. I decided to try preprocessing the data with PCA in order to train a simpler, faster model.
+
+```{r PCA, cache=TRUE}
+## try random forest with PCA
+# how many principal components do I need?
+prComp <- prcomp(myTraining3[, -52])
+summary(prComp)
+```
+
+I arbitrarily chose ten principal components as the cutoff for my model, which appeared to cover 96% of the variance in the underlying data. I trained my third model using these ten principal components.
+
+```{r PC-model, cache=TRUE}
+# build a model with 10 PCs
+preProc <- preProcess(myTraining3[, -52], method="pca", pcaComp=10)
+trainPC <- predict(preProc, myTraining3[, -52]) ## trainPC is the principal components of the training set
+##train the model based on the principal components of the training data
+modFitPC <- train(myTraining3$classe ~ ., method="rf", data=trainPC) 
+```
+
+```{r cache=TRUE}
+# cross-validate the PC model
+testPC <- predict(preProc, myTesting3[, -52])
+predictions.3 <- predict(modFitPC, testPC)
+CV.3 <- confusionMatrix(predictions.3, myTesting3$classe)
+```
+```{r}
+CV.3
+```
+
+Ultimately, because the out-of-sample error rate was higher on the PCA-based model, I decided to use the non-PCA-based model (my second model) for my final submission.
