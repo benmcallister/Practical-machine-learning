@@ -78,9 +78,10 @@ CV.1 <- confusionMatrix(predictions.1, myTesting3$classe)
 ```
 ```{r CV1}
 CV.1
+plot(CV.1[[2]], main="Confusion Matrix: Decision Tree Model")
 ```
 
-Due to the realtively high out-of-sample error for the decision tree, I decided to try a random forest model. 
+Due to the realtively high out-of-sample error for the decision tree (as reflected by a relatively low accuracy of 0.581 and by the confusion matrix visualization above), I decided to try a random forest model. 
 
 ```{r random-forest, cache=TRUE}
 # try to train with random forest NOTE- this took like an hour
@@ -90,9 +91,10 @@ CV.2 <- confusionMatrix(predictions.2, myTesting3$classe)
 ```
 ```{r CV2}
 CV.2
+plot(CV.2[[2]], main="Confusion Matrix: Random Forest Model")
 ```
 
-This model was very accurate, but took a very long time to run. I decided to try preprocessing the data with PCA in order to train a simpler, faster model.
+This model was very accurate (accuracy of 0.993), and this is evident in the confusion matrix visualization above, but the model took a very long time to run. I decided to try preprocessing the data with PCA in order to train a simpler, faster model.
 
 ```{r PCA, cache=TRUE}
 ## try random forest with PCA
@@ -119,6 +121,11 @@ CV.3 <- confusionMatrix(predictions.3, myTesting3$classe)
 ```
 ```{r}
 CV.3
+plot(CV.3[[2]], main="Confusion Matrix Random Forest Model with PCA")
 ```
 
-Ultimately, because the out-of-sample error rate was higher on the PCA-based model, I decided to use the non-PCA-based model (my second model) for my final submission.
+This model did run more quickly, but because the estimated out-of-sample error was higher (as reflected by a slightly lower accuracy of 0.958), I decided to use the non-PCA-based model (my second model) for my final submission.
+
+#### Conclusion
+
+Although it took a long time to run, my random forest model was the strongest. It's estimated out-of-sample accuracy was 99% and it correctly classified all test cases when I submitted answers to the class autograder.
