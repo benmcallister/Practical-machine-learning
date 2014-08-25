@@ -287,7 +287,7 @@ CV.3
 ```
 
 ```r
-plot(CV.3[[2]], main="Confusion Matrix Random Forest Model with PCA")
+plot(CV.3[[2]], main="Confusion Matrix: Random Forest Model with PCA")
 ```
 
 ![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2.png) 
