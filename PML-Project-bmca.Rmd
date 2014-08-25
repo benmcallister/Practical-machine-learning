@@ -121,7 +121,7 @@ CV.3 <- confusionMatrix(predictions.3, myTesting3$classe)
 ```
 ```{r}
 CV.3
-plot(CV.3[[2]], main="Confusion Matrix Random Forest Model with PCA")
+plot(CV.3[[2]], main="Confusion Matrix: Random Forest Model with PCA")
 ```
 
 This model did run more quickly, but because the estimated out-of-sample error was higher (as reflected by a slightly lower accuracy of 0.958), I decided to use the non-PCA-based model (my second model) for my final submission.
